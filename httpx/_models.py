@@ -512,6 +512,58 @@ class Request:
         self.extensions = {}
         self.stream = UnattachedStream()
 
+def markdown_to_text(markdown_text):
+    """
+    Converts a Markdown string to plain text, removing most formatting.
+    This is a *custom* implementation, focusing on simplicity and common
+    Markdown elements.  It does NOT aim to be a full Markdown parser.
+
+    Args:
+        markdown_text: The Markdown string to convert.
+
+    Returns:
+        The plain text equivalent of the Markdown.
+    """
+
+    # 1. Headers (H1 to H6)
+    text = re.sub(r'^(#+)\s*(.*)$', r'\2', markdown_text, flags=re.MULTILINE)
+
+    # 2. Bold and Italic
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # Bold (**bold**)
+    text = re.sub(r'__(.*?)__', r'\1', text)    # Bold (__bold__)
+    text = re.sub(r'\*(.*?)\*', r'\1', text)      # Italic (*italic*)
+    text = re.sub(r'_(.*?)_', r'\1', text)        # Italic (_italic_)
+
+    text = re.sub(r'\*\s*(.*?)\s*\*', r'\1', text) # Bullet points (* text)
+
+    # 3.  Strikethrough
+    text = re.sub(r'~~(.*?)~~', r'\1', text)    # Strikethrough (~~strikethrough~~)
+
+    # Links  [link text](url) and Images ![alt text](image_url)
+    text = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'\1', text)
+    text = re.sub(r'!\[([^\]]*)\]\(([^\)]+)\)', r'', text)
+
+    #   Inline code: `code`
+    text = re.sub(r'`(.*?)`', r'\1', text)
+    #   Code blocks: ```code```  (Remove the backticks and keep content)
+    text = re.sub(r'```[^\n]*\n(.*?)\n```', r'\1', text, flags=re.DOTALL)
+    text = re.sub(r'```(.*?)```', r'\1', text, flags=re.DOTALL)  # Handle single-line code blocks
+
+
+    # Lists (Unordered and Ordered)
+    text = re.sub(r'^\s*[-*+]\s+(.*)$', r'\1', text, flags=re.MULTILINE)
+    text = re.sub(r'^\s*\d+\.\s+(.*)$', r'\1', text, flags=re.MULTILINE)
+
+    # Quotes (>)
+    text = re.sub(r'^\s*>\s*(.*)$', r'\1', text, flags=re.MULTILINE)
+
+    # Horizontal Rules (---, ***, ___)
+    text = re.sub(r'^\s*[-*_]{3,}\s*$', '', text, flags=re.MULTILINE)
+    
+    text = re.sub(r'\n+', ' ', text) # replace newlines with spaces
+    text = re.sub(r'\s+', ' ', text) # Remove extra spaces
+
+    return text
 
 class Response:
     def __init__(
@@ -644,6 +696,10 @@ class Response:
         if not hasattr(self, "_content"):
             raise ResponseNotRead()
         return MarkItDown().convert(self._content).text_content
+
+    @property
+    def clean_text(self) -> str:
+        return markdown_to_text(self.markdown)
 
     @property
     def text(self) -> str:
