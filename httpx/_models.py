@@ -6,6 +6,7 @@ import email.message
 import json as jsonlib
 import re
 import typing
+from markitdown import MarkItDown
 import urllib.request
 from collections.abc import Mapping
 from http.cookiejar import Cookie, CookieJar
@@ -637,6 +638,12 @@ class Response:
         if not hasattr(self, "_content"):
             raise ResponseNotRead()
         return self._content
+
+    @property
+    def markdown(self) -> str:
+        if not hasattr(self, "_content"):
+            raise ResponseNotRead()
+        return MarkItDown().convert(self._content).text_content
 
     @property
     def text(self) -> str:
